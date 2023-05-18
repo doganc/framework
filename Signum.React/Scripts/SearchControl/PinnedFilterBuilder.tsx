@@ -1,7 +1,7 @@
 import * as React from 'react'
 import {
   FilterOptionParsed, QueryDescription, QueryToken, SubTokensOptions,
-  isList, isFilterGroupOptionParsed
+  isList, isFilterGroupOptionParsed, getFilterGroupUnifiedFilterType
 } from '../FindOptions'
 import { ValueLine, FormGroup } from '../Lines'
 import { Binding, IsByAll, tryGetTypeInfos, toLuxonFormat } from '../Reflection'
@@ -11,6 +11,7 @@ import { createFilterValueControl, MultiValue } from './FilterBuilder';
 import { SearchMessage } from '../Signum.Entities';
 import { classes } from '../Globals';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
+import { ValueLineController } from '../Lines/ValueLine'
 
 interface PinnedFilterBuilderProps {
   filterOptions: FilterOptionParsed[];
@@ -70,7 +71,15 @@ export default function PinnedFilterBuilder(p: PinnedFilterBuilderProps) {
 
 
     if (isFilterGroupOptionParsed(f)) {
-      return <ValueLine ctx={ctx} type={{ name: "string" }} onChange={() => handleValueChange(f)} labelText={labelText || SearchMessage.Search.niceToString()} />
+      if (f.filters.map(a => getFilterGroupUnifiedFilterType(a.token!.type)).distinctBy().onlyOrNull() == null && f.value)
+        f.value = undefined;
+
+      var tr = f.filters.map(a => a.token!.type).distinctBy(a => a.name).onlyOrNull();
+      var format = f.filters.map((a => a.token!.format)).notNull().distinctBy().onlyOrNull() ?? undefined;
+      var unit = f.filters.map((a => a.token!.unit)).notNull().distinctBy().onlyOrNull() ?? undefined;
+      const vlt = tr && ValueLineController.getValueLineType(tr);
+
+      return <ValueLine ctx={ctx} type={vlt != null ? tr! : { name: "string" }} formatText={format} unitText={unit} onChange={() => handleValueChange(f)} labelText={labelText || SearchMessage.Search.niceToString()} />
     }
 
     if (isList(f.operation!))

@@ -1,9 +1,9 @@
 import * as React from 'react'
 import { DateTime } from 'luxon'
 import { Dic, areEqual, classes, KeyGenerator } from '../Globals'
-import { FilterOptionParsed, QueryDescription, QueryToken, SubTokensOptions, filterOperations, isList, FilterOperation, FilterConditionOptionParsed, FilterGroupOptionParsed, isFilterGroupOptionParsed, hasAnyOrAll, getTokenParents, isPrefix, FilterConditionOption, PinnedFilter, PinnedFilterParsed } from '../FindOptions'
+import { FilterOptionParsed, QueryDescription, QueryToken, SubTokensOptions, filterOperations, isList, FilterOperation, FilterConditionOptionParsed, FilterGroupOptionParsed, isFilterGroupOptionParsed, hasAnyOrAll, getTokenParents, isPrefix, FilterConditionOption, PinnedFilter, PinnedFilterParsed, getFilterGroupUnifiedFilterType } from '../FindOptions'
 import { SearchMessage, Lite } from '../Signum.Entities'
-import { isNumber, trimDateToFormat } from '../Lines/ValueLine'
+import { isNumber, trimDateToFormat, ValueLineController } from '../Lines/ValueLine'
 import { ValueLine, EntityLine, EntityCombo, StyleContext, FormControlReadonly } from '../Lines'
 import { Binding, IsByAll, tryGetTypeInfos, toLuxonFormat, getTypeInfos, toNumberFormat } from '../Reflection'
 import { TypeContext } from '../TypeContext'
@@ -407,12 +407,19 @@ export function FilterGroupComponent(p: FilterGroupComponentsProps) {
 
     const f = p.filterGroup;
 
+    if (f.filters.map(a => getFilterGroupUnifiedFilterType(a.token!.type)).distinctBy().onlyOrNull() == null && f.value)
+      f.value = undefined;
+
     const readOnly = p.readOnly || f.frozen;
 
     const ctx = new TypeContext<any>(undefined, { formGroupStyle: "None", readOnly: readOnly, formSize: "ExtraSmall" }, undefined as any, Binding.create(f, a => a.value));
 
-    return <ValueLine ctx={ctx} type={{ name: "string" }} onChange={() => handleValueChange()} />
+    var tr = f.filters.map(a => a.token!.type).distinctBy(a => a.name).onlyOrNull();
+    var format = f.filters.map((a => a.token!.format)).notNull().distinctBy().onlyOrNull() ?? undefined;
+    var unit = f.filters.map((a => a.token!.unit)).notNull().distinctBy().onlyOrNull() ?? undefined;
+    const vlt = tr && ValueLineController.getValueLineType(tr);
 
+    return <ValueLine ctx={ctx} type={vlt != null ? tr! : { name: "string" }} formatText={format} unitText={unit} onChange={() => handleValueChange()} />
   }
 
   function handleValueChange() {

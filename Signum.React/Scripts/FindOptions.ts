@@ -472,6 +472,22 @@ export function getFilterType(tr: TypeReference): FilterType | null {
   return null;
 }
 
+export function getFilterGroupUnifiedFilterType(tr: TypeReference): FilterType | null {
+  if (tr.name == "number" || tr.name == "decmial" || tr.name == "boolean" || tr.name == "string" || tr.name == "Guid")
+    return "String";
+
+  if (tr.name == "dateTime")
+    return "DateTime";
+
+  if (tr.isEmbedded)
+    return "Embedded";
+
+  if (tr.isLite || tryGetTypeInfos(tr)[0]?.name)
+    return "Lite";
+
+  return null;
+}
+
 export const filterOperations: { [a: string /*FilterType*/]: FilterOperation[] } = {};
 filterOperations["String"] = [
   "Contains",
