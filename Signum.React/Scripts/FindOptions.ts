@@ -476,7 +476,7 @@ export function getFilterGroupUnifiedFilterType(tr: TypeReference): FilterType |
   if (tr.name == "number" || tr.name == "decmial" || tr.name == "boolean" || tr.name == "string" || tr.name == "Guid")
     return "String";
 
-  if (tr.name == "dateTime")
+  if (tr.name == "DateTime")
     return "DateTime";
 
   if (tr.isEmbedded)

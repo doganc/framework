@@ -97,7 +97,7 @@ export default function FilterBuilderEmbedded(p: FilterBuilderEmbeddedProps) {
     if (isFilterGroupOptionParsed(fc.filter)) {
 
       const f = fc.filter;
-      if (f.filters.map(a => getFilterGroupUnifiedFilterType(a.token!.type)).distinctBy().onlyOrNull() == null && f.value)
+      if (f.filters.map(a => getFilterGroupUnifiedFilterType(a.token!.type) ?? "").distinctBy().onlyOrNull() == null && f.value)
         f.value = undefined;
 
       const readOnly = fc.readonly || f.frozen;
@@ -105,8 +105,8 @@ export default function FilterBuilderEmbedded(p: FilterBuilderEmbeddedProps) {
       const ctx = new TypeContext<any>(undefined, { formGroupStyle: "None", readOnly: readOnly, formSize: "ExtraSmall" }, undefined as any, Binding.create(f, a => a.value));
 
       var tr = f.filters.map(a => a.token!.type).distinctBy(a => a.name).onlyOrNull();
-      var format = f.filters.map((a => a.token!.format)).notNull().distinctBy().onlyOrNull() ?? undefined;
-      var unit = f.filters.map((a => a.token!.unit)).notNull().distinctBy().onlyOrNull() ?? undefined;
+      var format = (tr && f.filters.map((a => a.token!.format ?? "")).distinctBy().onlyOrNull()) ?? undefined;
+      var unit = (tr && f.filters.map((a => a.token!.unit ?? "")).distinctBy().onlyOrNull()) ?? undefined;
       const vlt = tr && ValueLineController.getValueLineType(tr);
       const ft = tr && getFilterType(tr);
 

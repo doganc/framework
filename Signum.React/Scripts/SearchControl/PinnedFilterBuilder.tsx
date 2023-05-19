@@ -71,12 +71,12 @@ export default function PinnedFilterBuilder(p: PinnedFilterBuilderProps) {
 
 
     if (isFilterGroupOptionParsed(f)) {
-      if (f.filters.map(a => getFilterGroupUnifiedFilterType(a.token!.type)).distinctBy().onlyOrNull() == null && f.value)
+      if (f.filters.map(a => getFilterGroupUnifiedFilterType(a.token!.type) ?? "").distinctBy().onlyOrNull() == null && f.value)
         f.value = undefined;
 
       var tr = f.filters.map(a => a.token!.type).distinctBy(a => a.name).onlyOrNull();
-      var format = f.filters.map((a => a.token!.format)).notNull().distinctBy().onlyOrNull() ?? undefined;
-      var unit = f.filters.map((a => a.token!.unit)).notNull().distinctBy().onlyOrNull() ?? undefined;
+      var format = (tr && f.filters.map((a => a.token!.format ?? "")).distinctBy().onlyOrNull()) ?? undefined;
+      var unit = (tr && f.filters.map((a => a.token!.unit ?? "")).distinctBy().onlyOrNull()) ?? undefined;
       const vlt = tr && ValueLineController.getValueLineType(tr);
 
       return <ValueLine ctx={ctx} type={vlt != null ? tr! : { name: "string" }} formatText={format} unitText={unit} onChange={() => handleValueChange(f)} labelText={labelText || SearchMessage.Search.niceToString()} />
