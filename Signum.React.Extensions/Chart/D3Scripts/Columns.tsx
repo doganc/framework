@@ -162,7 +162,7 @@ export function paintColumns({ xRule, yRule, x: x2, y, keyValues, data, paramete
                     <g className="x-label" >
                       <TextEllipsis
                         maxWidth={size - posy} className="x-label sf-transition"
-                        transform={translate(bandwidth / 2, 0) + rotate(-90)}
+                        transform={translate(bandwidth / 2, -15) + rotate(-90)}
                         dominantBaseline="middle"
                         fontWeight="bold"
                         fill={(keyColumn.getColor(k) ?? color(key))}

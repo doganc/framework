@@ -128,7 +128,7 @@ export default function renderBars({ data, width, height, parameters, loading, o
                   isInside ?
                   <g className="y-label" transform={translate(labelsPadding, y.bandwidth() / 2)}>
                       <TextEllipsis 
-                        transform={translate(posx, y(keyColumn.getKey(key))!)}
+                        transform={translate(posx + 10, y(keyColumn.getKey(key))!)}
                         maxWidth={size - posx}
                         className="y-label sf-transition"
                         fill={(keyColumn.getColor(key) ?? color(keyColumn.getKey(key)))}
