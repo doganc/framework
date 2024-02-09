@@ -4,11 +4,14 @@ export interface TextIfFitsProps extends React.SVGProps<SVGTextElement>{
   maxWidth: number;
   padding?: number;
   etcText?: string;
+  onFit?: (() => React.SVGProps<SVGTextElement>);
+  onNoFit?: (() => React.SVGProps<SVGTextElement>);
 }
 
-export default function TextIfFits({ maxWidth, padding, children, etcText, ...atts } :  TextIfFitsProps) {
+export default function TextIfFits({ maxWidth, padding, children, etcText, onFit, onNoFit, ...atts } :  TextIfFitsProps) {
 
   const txt = React.useRef<SVGTextElement>(null);
+  const [fit, setFit] = React.useState<boolean>(true);
 
   React.useEffect(() => {
     var width = maxWidth;
@@ -20,11 +23,11 @@ export default function TextIfFits({ maxWidth, padding, children, etcText, ...at
     let textLength = txtElem.getComputedTextLength();
     console.log("Width:", width, " textLength:", textLength, " text: ", txtElem.textContent);
     if (textLength > width)
-      txtElem.textContent = "";
+      setFit(false);
   }, [maxWidth, padding, etcText, getString(children)]);
 
   return (
-    <text ref={txt} {...atts} >
+    <text ref={txt} {...atts} {...(fit ? onFit?.() : onNoFit?.())}>
       {children ?? ""}
     </text>
   );

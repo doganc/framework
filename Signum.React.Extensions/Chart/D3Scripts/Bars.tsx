@@ -143,16 +143,18 @@ export default function renderBars({ data, width, height, parameters, loading, o
               {y.bandwidth() > 15 && parseFloat(parameters["NumberOpacity"]) > 0 && row &&
                 <g className="numbers-label">
                   <TextIfFits
-                    transform={translate(x(valueColumn.getValue(row))! / 2, y(keyColumn.getValueKey(row))! + y.bandwidth() / 2)}
+                    //transform={translate(x(valueColumn.getValue(row))! / 2, y(keyColumn.getValueKey(row))! + y.bandwidth() / 2)}
                     maxWidth={x(valueColumn.getValue(row))!}
                     className="number-label sf-transition"
-                    fill={parameters["NumberColor"] ?? "#000"}
+                    //fill={parameters["NumberColor"] ?? "#000"}
                     dominantBaseline="middle"
                     opacity={parameters["NumberOpacity"]}
                     textAnchor="middle"
                     fontWeight="bold"
                     onClick={e => onDrillDown(row!, e)}
-                    cursor="pointer">
+                    cursor="pointer"
+                    onFit={() => ({ fill: parameters["NumberColor"] ?? "#000", transform: translate(x(valueColumn.getValue(row!))! / 2, y(keyColumn.getValueKey(row!))! + y.bandwidth() / 2) })}
+                    onNoFit={() => ({ fill: keyColumn.getValueColor(row!) ?? color(key), transform: translate(x(valueColumn.getValue(row!))! + 10, y(keyColumn.getValueKey(row!))! + y.bandwidth() / 2) })}>                         
                     {valueColumn.getValueNiceName(row)}
                   </TextIfFits>
                 </g>
