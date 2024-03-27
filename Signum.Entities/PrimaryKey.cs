@@ -139,6 +139,18 @@ public struct PrimaryKey : IEquatable<PrimaryKey>, IComparable, IComparable<Prim
         return new PrimaryKey(id.Value);
     }
 
+    public static implicit operator PrimaryKey(DateOnly id)
+    {
+        return new PrimaryKey(id);
+    }
+
+    public static implicit operator PrimaryKey?(DateOnly? id)
+    {
+        if (id == null)
+            return null;
+
+        return new PrimaryKey(id.Value);
+    }
 
     public static explicit operator int(PrimaryKey key)
     {
@@ -190,6 +202,19 @@ public struct PrimaryKey : IEquatable<PrimaryKey>, IComparable, IComparable<Prim
             return null;
 
         return (DateTime)key.Value.Object;
+    }
+
+    public static explicit operator DateOnly(PrimaryKey key)
+    {
+        return (DateOnly)key.Object;
+    }
+
+    public static explicit operator DateOnly?(PrimaryKey? key)
+    {
+        if (key == null)
+            return null;
+
+        return (DateOnly)key.Value.Object;
     }
 
     public static bool operator ==(PrimaryKey a, PrimaryKey b)
