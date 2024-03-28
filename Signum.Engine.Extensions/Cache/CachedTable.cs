@@ -776,7 +776,7 @@ class CachedLiteTable<T> : CachedTableBase where T : Entity
 
         private IColumn GetColumn(Field field)
         {
-            if (field is FieldPrimaryKey || field is FieldValue || field is FieldTicks)
+            if (field is FieldPrimaryKey || field is FieldValue || field is FieldTicks || field is FieldReference)
                 return (IColumn)field;
 
             throw new InvalidOperationException("{0} not supported when caching the ToString for a Lite of a transacional entity ({1})".FormatWith(field.GetType().TypeName(), this.table.Type.TypeName()));
