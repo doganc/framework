@@ -117,7 +117,7 @@ public abstract class ValueProviderBase
                         }
 
                         if (!(vp is TokenValueProvider))
-                            return new ContinueValueProvider(token.TryAfter('.'), vp, tp.AddError);
+                            return new ContinueValueProvider(token.TryAfter('.'), vp, tp.AddError) { Variable = variable };
                     }
 
                     ParsedToken result = ParsedToken.TryParseToken(token, SubTokensOptions.CanElement, tp.QueryDescription, tp.Variables, tp.AddError);
