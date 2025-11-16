@@ -1,15 +1,8 @@
 
 using Signum.Utilities.DataStructures;
+using System.Reflection.Metadata.Ecma335;
 
 namespace Signum.Utilities;
-
-public static class MyRandom
-{
-    [ThreadStatic]
-    static Random? random;
-
-    public static Random Current => random ??= new Random();
-}
 
 public static class RandomExtensions
 {

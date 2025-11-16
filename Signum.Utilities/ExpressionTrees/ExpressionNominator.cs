@@ -26,13 +26,19 @@ public class ExpressionNominator : ExpressionVisitor
         {
             var m = ((MethodCallExpression)expression);
 
-            return m.Method.DeclaringType == typeof(Queryable) || m.Method.HasAttribute<AvoidEagerEvaluationAttribute>();
+            return m.Method.DeclaringType == typeof(Queryable) || 
+                m.Method.HasAttribute<AvoidEagerEvaluationAttribute>();
         }
 
         //Query<UserEntity>().Select(u => new ComboBox()) expects N different ComboBoxes
         //also solves problems with MemberInitExpression and CollectionInitExpressions
         if (expression.NodeType == ExpressionType.New)
+        {
+            if (((NewExpression)expression).Constructor?.HasAttribute<NewCanBeConstantAttribute>() == true)
+                return false;
+
             return true;
+        }
 
         return expression.NodeType == ExpressionType.Parameter ||
             expression.NodeType == ExpressionType.Lambda || // why?

@@ -44,7 +44,7 @@ public class UpdateUpdateTest
     {
         using (var tr = new Transaction())
         {
-            int count = Database.Query<NoteWithDateEntity>().UnsafeUpdate().Set(a => a.Text, a => null!).Execute();
+            int count = Database.Query<NoteWithDateEntity>().UnsafeUpdate().Set(a => a.Title, a => null!).Execute();
             //tr.Commit();
         }
 
@@ -508,7 +508,7 @@ public class UpdateUpdateTest
                          {
                              LabelId = a.Label.Id,
                              mle
-                         }).UnsafeUpdateMListPart(p => p.mle!) /*CSBUG*/
+                         }).UnsafeUpdateMListPart(p => p.mle)
                         .Set(mle => mle.Element.Seconds, p => (int)p.LabelId)
                         .Execute();
 

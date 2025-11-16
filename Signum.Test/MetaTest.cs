@@ -1,5 +1,4 @@
-using Signum.Engine.DynamicQuery;
-using Signum.Entities.DynamicQuery;
+using Signum.DynamicQuery;
 
 namespace Signum.Test;
 
@@ -27,9 +26,9 @@ public class MetaTest
     [Fact]
     public void MetaAnonymousType()
     {
-        var dic = DynamicQueryCore.QueryMetadata(Database.Query<NoteWithDateEntity>().Select(a => new { a.Target, a.Text, a.ToString().Length, Sum = a.ToString() + a.ToString() }))!;
+        var dic = DynamicQueryCore.QueryMetadata(Database.Query<NoteWithDateEntity>().Select(a => new { a.Target, a.Title, a.ToString().Length, Sum = a.ToString() + a.ToString() }))!;
         Assert.IsType<CleanMeta>(dic["Target"]);
-        Assert.IsType<CleanMeta>(dic["Text"]);
+        Assert.IsType<CleanMeta>(dic["Title"]);
         Assert.IsType<DirtyMeta>(dic["Length"]);
         Assert.IsType<DirtyMeta>(dic["Sum"]);
     }
@@ -61,7 +60,7 @@ public class MetaTest
         Assert.IsType<DirtyMeta>(dic["Sum"]);
 
         var metas = ((DirtyMeta)dic["Sum"]!).CleanMetas;
-        Assert.Equal("(Album).Name,(Label).Name", metas.SelectMany(cm => cm.PropertyRoutes).Distinct().ToString(","));
+        Assert.Equal("(Album).Name,(Label).Name", metas.SelectMany(cm => cm.PropertyRoutes).Distinct().Select(a => a.ToString()).Order().ToString(","));
     }
 
     [Fact]

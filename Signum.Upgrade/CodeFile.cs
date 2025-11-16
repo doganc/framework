@@ -28,7 +28,8 @@ public class CodeFile
 
     public override string ToString() => FilePath;
 
-    public string FilePath { get; }
+    public string FilePath { get; private set; }
+    public string? newFilePath;
     public UpgradeContext Uctx { get; }
 
     string? _content;
@@ -51,16 +52,32 @@ public class CodeFile
         }
     }
 
-    public void SafeIfNecessary()
+    public void SaveIfNecessary()
     {
-        if (_content == null)
-            return;
+        if (_content != null && _content != _originalContent)
+        {
+            SafeConsole.WriteLineColor(ConsoleColor.DarkGray, "Modified " + FilePath);
+            File.WriteAllText(Uctx.AbsolutePath(FilePath), _content, encoding!);
+        }
 
-        if (_content == _originalContent)
-            return;
+        if(newFilePath != null)
+        {
+            var newPath = Uctx.AbsolutePathSouthwind(newFilePath);
+            var oldPath = Uctx.AbsolutePath(FilePath);
 
-        SafeConsole.WriteLineColor(ConsoleColor.DarkGray, "Modified " + FilePath);
-        File.WriteAllText(Path.Combine(this.Uctx.RootFolder, FilePath), _content, encoding!);
+            Directory.CreateDirectory(Path.GetDirectoryName(newPath)!);
+
+            File.Move(oldPath, newPath);
+
+            if (Directory.EnumerateFiles(Path.GetDirectoryName(oldPath)!).IsEmpty())
+                Directory.Delete(Path.GetDirectoryName(oldPath)!);
+
+            SafeConsole.WriteLineColor(ConsoleColor.DarkMagenta, "Moved " + FilePath + " to " + newFilePath);
+
+
+            FilePath = newFilePath;
+            newFilePath = null;
+        }
     }
 
     internal static Encoding GetEncoding(string filePath, byte[]? bytes)
@@ -177,7 +194,7 @@ public class CodeFile
         });
     }
 
-    string GetIndent(string v)
+    public static string GetIndent(string v)
     {
         return Regex.Match(v, @"^\s*").Value;
     }
@@ -185,36 +202,128 @@ public class CodeFile
     /// <param name="fromLine">Not included</param>
     /// <param name="toLine">Not included</param>
     public void ReplaceBetweenExcluded(Expression<Predicate<string>> fromLine, Expression<Predicate<string>> toLine, string text) =>
-        ReplaceBetween(fromLine, +1, toLine, -1, text);
+        ReplaceBetween(new(fromLine, +1), new(toLine, -1), text);
 
     /// <param name="fromLine">Not included</param>
     /// <param name="toLine">Not included</param>
     public void ReplaceBetweenIncluded(Expression<Predicate<string>> fromLine, Expression<Predicate<string>> toLine, string text) =>
-        ReplaceBetween(fromLine, +0, toLine, -0, text);
+         ReplaceBetween(new(fromLine, +0), toLine: new(toLine, -0), text);
 
-    public void ReplaceBetween(Expression<Predicate<string>> fromLine, int fromDelta, Expression<Predicate<string>> toLine, int toDelta, string text)
+
+
+    public void ReplaceBetween(ReplaceBetweenOption fromLine, ReplaceBetweenOption toLine, string text)
     {
         ProcessLines(lines =>
         {
-            var from = lines.FindIndex(fromLine.Compile());
+            var from = fromLine.FindStartIndex(lines);
             if (from == -1)
             {
-                Warning($"Unable to find a line where {fromLine} to insert after it the text: {text}");
+                Warning($"Unable to find a line where {fromLine.Condition} to insert after it the text: {text}");
                 return false;
             }
-            var to = lines.FindIndex(from + 1, toLine.Compile());
+
+            var indent = GetIndent(lines[from - fromLine.Delta]);
+            var to = toLine.FindEndIndex(lines, from, indent);
             if (to == -1)
             {
-                Warning($"Unable to find a line where {toLine} after line {to} to insert before it the text: {text}");
+                Warning($"Unable to find a line where {toLine.Condition} after line {to} to insert before it the text: {text}");
                 return false;
             }
-            var indent = GetIndent(lines[from]);
-            lines.RemoveRange(from + fromDelta, (to + toDelta) - (from + fromDelta) + 1);
+            lines.RemoveRange(from, to - from + 1);
             if (text.HasText())
-                lines.InsertRange(from + fromDelta, text.Lines().Select(a => IndentAndReplace(a, indent)));
+                lines.InsertRange(from, text.Lines().Select(a => IndentAndReplace(a, indent)));
             return true;
         });
     }
+
+    /// <param name="fromLine">Not included</param>
+    /// <param name="toLine">Not included</param>
+    public void ReplaceBetweenExcluded(Expression<Predicate<string>> fromLine, Expression<Predicate<string>> toLine, Func<string, string> getText) =>
+         ReplaceBetween(new(fromLine, +1), new(toLine, -1), getText);
+
+    /// <param name="fromLine">Included</param>
+    /// <param name="toLine">Included</param>
+    public void ReplaceBetweenIncluded(Expression<Predicate<string>> fromLine, Expression<Predicate<string>> toLine, Func<string, string> getText) =>
+       ReplaceBetween(new(fromLine, +0), toLine: new(toLine, -0), getText);
+
+    public void ReplaceBetween(ReplaceBetweenOption fromLine, ReplaceBetweenOption toLine, Func<string, string> getText)
+    {
+        ProcessLines(lines =>
+        {
+            var from = fromLine.FindStartIndex(lines);
+            if (from == -1)
+            {
+                Warning($"Unable to find a line where {fromLine.Condition} to insert text after it");
+                return false;
+            }
+
+            var indent = GetIndent(lines[from - fromLine.Delta]);
+            var to = toLine.FindEndIndex(lines, from, indent);
+            if (to == -1)
+            {
+                Warning($"Unable to find a line where {toLine.Condition} after line {to} to insert text before it");
+                return false;
+            }
+            var oldText = lines.Where((l, i) => i >= from && i <= to).ToList().ToString("\n");
+            lines.RemoveRange(from, to - from + 1);
+
+            var text = getText(oldText);
+            if (text.HasText())
+                lines.InsertRange(from, text.Lines().Select(a => IndentAndReplace(a, "")));
+
+            return true;
+        });
+    }
+
+    public string GetMethodBody(Expression<Predicate<string>> methodLine) =>
+        GetLinesBetween(
+            new(methodLine, 2),
+            new(s => s.Contains("}"), -1) { SameIdentation = true });
+
+
+    public void ReplaceMethod(Expression<Predicate<string>> methodLine, string text) =>
+        ReplaceBetween(
+            new(methodLine, 0),
+            new(s => s.Contains("}"), 0) { SameIdentation = true },
+            text);
+
+
+    /// <param name="fromLine">Not included</param>
+    /// <param name="toLine">Not included</param>
+    public string GetLinesBetweenExcluded(Expression<Predicate<string>> fromLine, Expression<Predicate<string>> toLine) =>
+         GetLinesBetween(new(fromLine, +1), new(toLine, -1));
+
+    /// <param name="fromLine">Not included</param>
+    /// <param name="toLine">Not included</param>
+    public string GetLinesBetweenIncluded(Expression<Predicate<string>> fromLine, Expression<Predicate<string>> toLine) =>
+       GetLinesBetween(new(fromLine, +0), toLine: new(toLine, -0));
+
+    public string GetLinesBetween(ReplaceBetweenOption fromLine, ReplaceBetweenOption toLine)
+    {
+        string text = "";
+        ProcessLines(lines =>
+        {
+            var from = fromLine.FindStartIndex(lines);
+            if (from == -1)
+            {
+                Warning($"Unable to find a line where {fromLine} to extract text");
+                return false;
+            }
+
+            var indent = GetIndent(lines[from - fromLine.Delta]);
+
+            var to = toLine.FindEndIndex(lines, from, indent);
+            if (to == -1)
+            {
+                Warning($"Unable to find a line where {toLine} after line {to} to extract text");
+                return false;
+            }
+            text = lines.Where((l, i) => i >= from && i <= to).ToList().ToString("\n");
+            return true;
+        });
+        return text;
+    }
+
 
     public void ReplaceLine(Expression<Predicate<string>> condition, string text)
     {
@@ -290,7 +399,7 @@ public class CodeFile
 
     public void ProcessLines(Func<List<string>, bool> process)
     {
-        var separator = this.Content.Contains("\r\n") ? "\r\n" : "\n";
+        var separator = this.Content.Contains("\n") ? "\n" : "\n";
         var lines = Regex.Split(this.Content, "\r?\n").ToList();
 
         if (process(lines))
@@ -307,11 +416,86 @@ public class CodeFile
             throw new InvalidOperationException("");
     }
 
+    internal void ReplacPartsInTypeScriptImport(Expression<Func<string, bool>> pathPredicate, Func<string /*path*/, HashSet<string> /*parts*/, HashSet<string>?> importedPartsSelector)
+    {
+        AssertExtension(".ts", ".tsx");
+
+        var compiled = pathPredicate.Compile();
+        ProcessLines(lines =>
+        {
+            bool changed = false;
+            int pos = 0;
+            while ((pos = lines.FindIndex(pos, a => a.StartsWith("import ") && !a.StartsWith("import type") && a.Contains(" from ") && compiled(a.After("from").Trim(' ', '\'', '\"', ';')))) != -1)
+            {
+                var line = lines[pos];
+                var importPart = line.After("import").Before("from").Trim();
+                string after = line.After("from");
+
+                var parts = importPart.StartsWith('*') ? new[] { importPart.Trim() }.ToHashSet() : importPart.Between("{", "}").SplitNoEmpty(",").Select(a => a.Trim()).ToHashSet();
+                var newParts = importedPartsSelector(after.Trim(' ', '\'', '\"', ';'), parts);
+
+                if (newParts != null) {
+
+                    if (newParts.Count == 1 && newParts.SingleEx().StartsWith("*"))
+                        lines[pos] = "import " + newParts.SingleEx() + " from" + after;
+                    else
+                        lines[pos] = "import { " + newParts.ToString(", ") + " } from" + after;
+                    changed = true;
+                }
+                pos++;
+            }
+
+            return changed;
+
+        });
+    }
+
+    internal void ReplaceAndCombineTypeScriptImports(Expression<Func<string, bool>> pathPredicate, Func<HashSet<string>, HashSet<string>?> importedPartsSelector)
+    {
+        AssertExtension(".ts", ".tsx");
+
+        var compiled = pathPredicate.Compile();
+        ProcessLines(lines =>
+        {
+            var parts = new HashSet<string>();
+            int pos = 0;
+            var initialPos = -1;
+            var after = (string?)null;
+            while ((pos = lines.FindIndex(pos, a => a.StartsWith("import ") && !a.StartsWith("import type") && a.Contains(" from ") && compiled(a.After("from").Trim(' ', '\'', '\"', ';')))) != -1)
+            {
+                if (initialPos == -1)
+                    initialPos = pos;
+
+                var line = lines[pos];
+                var importPart = line.After("import").Before("from").Trim();
+                if (after == null)
+                    after = line.After("from");
+
+                lines.RemoveAt(pos);
+
+                parts.AddRange(importPart.StartsWith('*') ? new[] { importPart.Trim() } : importPart.Between("{", "}").SplitNoEmpty(",").Select(a => a.Trim()));
+            }
+
+            if (initialPos == -1)
+            {
+                Warning($"Unable to find import with path where {pathPredicate}");
+                return false;
+            }
+
+            var newImports = importedPartsSelector(parts);
+
+            if (newImports != null)
+                lines.Insert(initialPos, "import { " + newImports.ToString(", ") + " } from" + after);
+
+            return true;
+        });
+    }
+
     public void UpdateNpmPackages(string packageJsonBlock)
     {
         var packages = packageJsonBlock.Lines().Select(a => a.Trim()).Where(a => a.HasText()).Select(a => new
         {
-            PackageName = a.Before(":").Trim('"'),
+            PackageName = a.Before(":").Trim('"', ' '),
             Version = a.After(":").Trim(',', '"', ' '),
         }).ToList();
 
@@ -320,6 +504,7 @@ public class CodeFile
             UpdateNpmPackage(v.PackageName, v.Version);
         }
     }
+
 
     public void UpdateNpmPackage(string packageName, string version)
     {
@@ -358,7 +543,7 @@ public class CodeFile
             var indent = GetIndent(lines[pos]);
             lines.RemoveRange(pos, 1);
 
-            if(lines[pos].Trim().StartsWith("}"))
+            if (lines[pos].Trim().StartsWith("}"))
             {
                 if (!lines[pos - 1].Trim().EndsWith("{") && lines[pos - 1].Trim().EndsWith(","))
                 {
@@ -370,9 +555,48 @@ public class CodeFile
         });
     }
 
+    public void AddNpmPackage(string packageName, string version, bool devDependencies = false)
+    {
+        AssertExtension(".json");
+
+        ProcessLines(lines =>
+        {
+            var dependencies = devDependencies ? @"""devDependencies""": @"""dependencies""";
+
+            var pos = lines.FindIndex(a => a.Contains(dependencies));
+            
+            if (pos == -1)
+            {
+                Warning(@$"Unable to find a line with {dependencies} to remove it");
+                return false;
+            }
+            var indent = GetIndent(lines[pos]);
+            if (lines[pos].TrimEnd().EndsWith("},"))
+            {
+                lines[pos] = lines[pos].Before("},");
+                lines.Insert(pos + 1, indent + "},");
+            }
+
+            var postEnd = lines.FindIndex(pos, a => a.Contains("},"));
+
+
+            if (
+            !lines[postEnd - 1].TrimEnd().EndsWith(",") &&
+            !lines[postEnd - 1].TrimEnd().EndsWith("{")
+            )
+            {
+                lines[postEnd - 1] += ",";
+            }
+
+            lines.Insert(postEnd, indent + $@"  ""{packageName}"": ""{version}""");
+
+            return true;
+        });
+    }
+
     public void UpdateNugetReferences(string xmlSnippets)
     {
-        foreach (var line in xmlSnippets.Lines().Where(a=>a.HasText()))
+        foreach (var line in xmlSnippets.Lines().Where(a => a.HasText()))
         {
             UpdateNugetReference(line.Between("Include=\"", "\""), line.Between("Version=\"", "\""));
         }
@@ -395,7 +619,7 @@ public class CodeFile
         {
             elem.Attribute("Version")!.Value = version;
 
-            this.Content = doc.ToString(SaveOptions.DisableFormatting);
+            this.Content = doc.ToString(SaveOptions.DisableFormatting).Replace("\n", "\n");
         }
     }
 
@@ -416,7 +640,7 @@ public class CodeFile
         {
             eleme.Remove();
 
-            this.Content = doc.ToString(SaveOptions.DisableFormatting);
+            this.Content = doc.ToString(SaveOptions.DisableFormatting).Replace("\n", "\n");
         }
     }
 
@@ -433,8 +657,216 @@ public class CodeFile
             new XAttribute("Include", version)
         ));
 
-        this.Content = doc.ToString(SaveOptions.DisableFormatting);
+        this.Content = doc.ToString(SaveOptions.DisableFormatting).Replace("\n", "\n");
 
     }
+
+    public void Solution_RemoveProject(string name, WarningLevel showWarning = WarningLevel.Error)
+    {
+        var prj = Content.Lines().Where(l => l.Contains("Project(") && l.Contains(name + ".csproj")).SingleOrDefault();
+
+        if (prj == null)
+        {
+            SafeConsole.WriteLineColor(showWarning == WarningLevel.Error ? ConsoleColor.Red : ConsoleColor.Yellow,
+               showWarning.ToString().ToUpper() + " no reference to '" + name + "' found in " + FilePath);
+
+            return;
+        }
+
+        var projectId = GuidRegex.Match(prj.After(name)).Groups["id"].Value;
+
+        ReplaceBetweenIncluded(l => l.Contains("Project(") && l.Contains(name + ".csproj"), l => l.Contains("EndProject"), "");
+
+        RemoveAllLines(l => l.Contains(projectId));
+    }
+
+
+    static Regex GuidRegex = new Regex(@"(?<id>[\w]{8}-[\w]{4}-[\w]{4}-[\w]{4}-[\w]{12})");
+
+    public void Solution_AddProject(string projectFile, string? parentFolder, string projecTypeId = "9A19103F-16F7-4668-BE54-9A1E7A4F7556", WarningLevel showWarning = WarningLevel.Error)
+    {
+        var prjRegex = new Regex(@"[\\]?(?<project>[\.\w]*).csproj");
+
+        var prjName = prjRegex.Match(projectFile).Groups["project"].Value;
+
+        var projectId = Guid.NewGuid().ToString().ToUpper();
+
+        var projectTypeIdUpper = Guid.Parse(projecTypeId).ToString().ToUpper();
+
+        InsertAfterLastLine(l => l.StartsWith("EndProject"), $$"""
+                Project("{{{projectTypeIdUpper}}}") = "{{prjName}}", "{{projectFile}}", "{{{projectId}}}"
+                EndProject
+                """);
+        var configs = GetLinesBetweenExcluded(
+            l => l.Contains("GlobalSection(SolutionConfigurationPlatforms) = preSolution"),
+            l => l.Contains("EndGlobalSection")).Split("\n");
+
+        InsertAfterFirstLine(l => l.Contains("GlobalSection(ProjectConfigurationPlatforms) = postSolution"),
+            configs.Select(config => $$"""
+                    {{{projectId}}}.{{config.Before("=").Trim()}}.ActiveCfg = {{config.After("=").Trim()}}
+                    {{{projectId}}}.{{config.Before("=").Trim()}}.Build.0 = {{config.After("=").Trim()}}
+                """).ToString("\n"));
+
+        if (parentFolder != null)
+        {
+            var parent = this.Content.Lines().Where(l => l.Contains("Project(") && l.Contains(parentFolder)).FirstEx();
+
+            var parentId = GuidRegex.Match(parent.After(parentFolder)).Groups["id"].Value;
+
+            InsertAfterFirstLine(l => l.Contains("GlobalSection(NestedProjects) = preSolution"), $"\t{{{projectId}}} = {{{parentId}}}");
+        }
+        SafeConsole.WriteLineColor(ConsoleColor.Yellow, $"Project {projectFile} added to solution.");
+    }
+
+    public void Solution_AddFolder(string folderName)
+    {
+        var folderId = Guid.NewGuid().ToString().ToUpper();
+
+        var folderTypeId = Guid.Parse("2150E333-8FDC-42A3-9474-1A3956D46DE8").ToString().ToUpper();
+
+        InsertAfterLastLine(l => l.StartsWith("EndProject"), $$"""
+                Project("{{{folderTypeId}}}") = "{{folderName}}", "{{folderName}}", "{{{folderId}}}"
+                EndProject
+                """);
+    }
+
+    public void Solution_SolutionItem(string relativeFilePath, string folderName)
+    {
+        var folderId = Guid.NewGuid().ToString().ToUpper();
+
+        var folderTypeId = Guid.Parse("2150E333-8FDC-42A3-9474-1A3956D46DE8").ToString().ToUpper();
+
+        ReplaceBetweenExcluded(
+            l => l.StartsWith("Project") && l.Contains($"\"{folderName}\""),
+            l => l.Trim() == "EndProject", text =>
+            {
+                if (text.Trim().IsEmpty())
+                    return
+                    "\tProjectSection(SolutionItems) = preProject\n" +
+                    "\t\t" + relativeFilePath + " = " + relativeFilePath + "\n" +
+                    "\tEndProjectSection";
+                else
+                    return text.Replace("\tEndProjectSection", "\t\t" + relativeFilePath + " = " + relativeFilePath + "\n" +
+                    "\tEndProjectSection");
+            });
+    }
+
+    internal IDisposable OverrideWarningLevel(WarningLevel none)
+    {
+        var oldLevel = this.WarningLevel;
+        this.WarningLevel = none;
+        return new Disposable(() => this.WarningLevel = oldLevel);
+    }
+
+    internal void MoveFile(string newFilePath)
+    {
+        this.newFilePath = newFilePath;
+    }
+
+    public void ReplaceBlock(Expression<Predicate<string>> fromLine, Expression<Predicate<string>> toLine, Func<string, string, string, string> getText)
+    {
+        ProcessLines(lines =>
+        {
+            var fromIdx = lines.FindIndex(fromLine.Compile());
+            if (fromIdx == -1)
+            {
+                Warning($"Unable to find a line where {fromLine} to start block replacement");
+                return false;
+            }
+            var fromIndent = GetIndent(lines[fromIdx]);
+
+            var toLineFunc = toLine.Compile();
+
+            var toIdx = lines.FindIndex(fromIdx, s => GetIndent(s) == fromIndent && toLineFunc(s));
+            if (toIdx == -1)
+            {
+                Warning($"Unable to find a line where {toLine} to end block replacement with the same indentation as fromLine");
+                return false;
+            }
+
+            // Collect initialLines
+            var initialLines = new List<string> { lines[fromIdx] };
+            int i = fromIdx + 1;
+            while (i < toIdx && GetIndent(lines[i]) == fromIndent)
+            {
+                initialLines.Add(lines[i]);
+                i++;
+            }
+
+            // Collect endLines
+            var endLines = new List<string> { lines[toIdx] };
+            int j = toIdx - 1;
+            while (j >= i && GetIndent(lines[j]) == fromIndent)
+            {
+                endLines.Insert(0, lines[j]);
+                j--;
+            }
+
+            // Collect body
+            var body = new List<string>();
+            for (int k = i; k <= j; k++)
+                body.Add(lines[k]);
+
+            string Unindent(List<string> list)
+            {
+                return list.Select(a => a.StartsWith(fromIndent) ? a.Substring(fromIndent.Length) : a).ToString("\n");
+            }
+
+            // Replace block
+            lines.RemoveRange(fromIdx, toIdx - fromIdx + 1);
+            var replacement = getText(Unindent(initialLines), Unindent(body), Unindent(endLines));
+            if (replacement.HasText())
+                lines.InsertRange(fromIdx, replacement.Lines().Select(a => IndentAndReplace(a, fromIndent)));
+            return true;
+        });
+    }
+}
+
+public class ReplaceBetweenOption
+{
+    public Expression<Predicate<string>> Condition;
+    public int Delta;
+    public bool LastIndex = false;
+    public bool SameIdentation = false;
+
+    public ReplaceBetweenOption(Expression<Predicate<string>> condition, int delta = 0)
+    {
+        this.Condition = condition;
+        this.Delta = delta;
+    }
+
+   
+
+    internal int FindStartIndex(List<string> lines)
+    {
+        var cond = Condition.Compile();
+        var from = !LastIndex ?
+          lines.FindIndex(cond) :
+          lines.FindLastIndex(cond);
+
+        if (from == -1)
+            return from;
+
+        return from + Delta;
+    }
+
+    internal int FindEndIndex(List<string> lines, int startIndex, string indent)
+    {
+        var cond = Condition.Compile();
+
+        var cond2 = !SameIdentation ? cond :
+        s => cond(s) && CodeFile.GetIndent(s) == indent;
+
+        var to = !LastIndex ?
+        lines.FindIndex(startIndex, cond2) :
+        lines.FindLastIndex(cond2);
+
+        if (to == -1)
+            return to;
+
+        return to + Delta;
+    }
+
+    public override string ToString() => this.Condition.ToString();
 }
 

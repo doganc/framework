@@ -1,9 +1,14 @@
 {
   "profiles": {
-    "Signum.Entities": {
+    "Signum": {
       "commandName": "Project",
-      "commandLineArgs": "\"obj\\x64\\Debug\\net5\\Signum.Entities.dll\" \"D:\\Signum\\southwind\\Framework\\Signum.Entities\\obj\\SignumReferences.txt\"",
-      "workingDirectory": "D:\\Signum\\southwind\\Framework\\Signum.Entities\\"
+      "commandLineArgs": "\"obj\\Debug\\net8.0\\Signum.dll\" \"obj\\SignumReferences.txt\"",
+      "workingDirectory": "..\\Signum\\"
+    },
+    "Signum.Authorization": {
+      "commandName": "Project",
+      "commandLineArgs": "\"obj\\Debug\\net8.0\\Signum.Authorization.dll\" \"obj\\SignumReferences.txt\"",
+      "workingDirectory": "..\\Extensions\\Signum.Authorization"
     }
   }
 }

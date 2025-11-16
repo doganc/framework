@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
 
 namespace Signum.Utilities;
@@ -68,7 +70,7 @@ public static class StringExtensions
 
     public static string? AddLine(this string? str, string part)
     {
-        return Add(str, "\r\n", part);
+        return Add(str, "\n", part);
     }
 
     public static string[] Lines(this string str)
@@ -570,7 +572,7 @@ public static class StringExtensions
     {
         if (str.HasText() && (str.Length > max))
         {
-            if(etcString.Length <= max)
+            if (max <= etcString.Length)
                 return str.Substring(0, max);
 
             return str.Start(max - etcString.Length) + etcString;
@@ -585,10 +587,10 @@ public static class StringExtensions
 
     public static string VerticalEtc(this string str, int maxLines, string etcString = "(…)")
     {
-        if (str.HasText() && (str.Contains("\r\n")))
+        if (str.HasText() && (str.Contains("\n")))
     {
-            string[] arr = str.Split(new string[] { "\r\n" }, maxLines - 1, StringSplitOptions.None);
-            string res = arr.ToString("\r\n");
+            string[] arr = str.Split(new string[] { "\n" }, maxLines - 1, StringSplitOptions.None);
+            string res = arr.ToString("\n");
             if (res.Length < str.Length)
                 res += etcString;
             return res;
@@ -667,12 +669,21 @@ public static class StringExtensions
 
     public static string Indent(this string str, int numChars)
     {
-        return Indent(str, new string(' ', numChars));
+        if (numChars > 0)
+            return str.Indent(new string(' ', numChars)); // Call the string overload
+        else if (numChars < 0)
+            return Unindent(str, -numChars);
+        return str;
     }
 
     public static string Indent(this string str, int numChars, char indentChar)
     {
-        return Indent(str, new string(indentChar, numChars));
+        if (numChars > 0)
+            return Indent(str, new string(indentChar, numChars));
+        else if (numChars < 0)
+            return Unindent(str, -numChars, indentChar);
+
+        return str;
     }
 
     public static string Indent(this string str, string space)
@@ -696,6 +707,36 @@ public static class StringExtensions
             }
         }
 
+        return sb.ToString();
+    }
+
+
+    public static string Unindent(this string str, int removeSpaces, char indentChar = ' ')
+    {
+        var sb = new System.Text.StringBuilder(str.Length);
+        int i = 0;
+        bool atLineStart = true;
+        while (i < str.Length)
+        {
+            if (atLineStart)
+            {
+                int removed = 0;
+                while (removed < removeSpaces && i < str.Length && str[i] == indentChar)
+                {
+                    i++;
+                    removed++;
+                }
+                atLineStart = false;
+            }
+            if (i < str.Length)
+            {
+                char c = str[i];
+                sb.Append(c);
+                if (c == '\n')
+                    atLineStart = true;
+                i++;
+            }
+        }
         return sb.ToString();
     }
 
@@ -731,18 +772,6 @@ public static class StringExtensions
         for (int i = 0; i < len; i++)
             arr[i] = str[len - 1 - i];
         return new string(arr);
-    }
-
-    public static bool Wildcards(this string fileName, IEnumerable<string> wildcards)
-    {
-        return wildcards.Any(wc => fileName.Wildcards(wc));
-    }
-
-    static readonly Dictionary<string, string> wildcardsPatterns = new Dictionary<string, string>();
-    public static bool Wildcards(this string fileName, string wildcard)
-    {
-        var pattern = wildcardsPatterns.GetOrCreate(wildcard, wildcard.Replace(".", "[.]").Replace("*", ".*").Replace("?", "."));
-        return Regex.IsMatch(fileName, pattern);
     }
 
     // like has an optional ESCAPE not available
@@ -851,5 +880,10 @@ public static class StringExtensions
     public static string[] SplitNoEmpty(this string text, params char[] separators)
     {
         return text.Split(separators, StringSplitOptions.RemoveEmptyEntries);
+    }
+
+    public static Uri Combine(this Uri baseUrl, string suffix)
+    {
+        return new Uri(baseUrl.ToString().TrimEnd('/') + "/" + suffix.TrimStart('/'));
     }
 }

@@ -1,11 +1,18 @@
 using System.Threading;
 using System.Collections;
+using System.Collections.Concurrent;
 
 namespace Signum.Utilities;
 
 public static class Statics
 {
-    static readonly Dictionary<string, IThreadVariable> threadVariables = new Dictionary<string, IThreadVariable>();
+    static readonly ConcurrentDictionary<string, IThreadVariable> threadVariables = new ConcurrentDictionary<string, IThreadVariable>();
+
+
+    public static IThreadVariable? GetVariable(string name)
+    {
+        return threadVariables.TryGetC(name);
+    }
 
     public static AsyncThreadVariable<T> ThreadVariable<T>(string name, bool avoidExportImport = false)
     {
@@ -13,7 +20,7 @@ public static class Statics
         threadVariables.AddOrThrow(name, variable, "Thread variable {0} already defined");
         return variable;
     }
-   
+
     public static Dictionary<string, object?> ExportThreadContext(bool force = false)
     {
         return threadVariables.Where(t => !t.Value.IsClean && (!t.Value.AvoidExportImport || force)).ToDictionaryEx(kvp => kvp.Key, kvp => kvp.Value.UntypedValue);
@@ -42,7 +49,7 @@ public static class Statics
 
     public static void CleanThreadContextAndAssert()
     {
-        string errors = threadVariables.Values.Where(v => !v.IsClean).ToString(v => "{0} contains the non-default value {1}".FormatWith(v.Name, v.UntypedValue), "\r\n");
+        string errors = threadVariables.Values.Where(v => !v.IsClean).ToString(v => "{0} contains the non-default value {1}".FormatWith(v.Name, v.UntypedValue), "\n");
 
         foreach (var v in threadVariables.Values)
         {
@@ -50,7 +57,7 @@ public static class Statics
         }
 
         if (errors.HasText())
-            throw new InvalidOperationException("The thread variable \r\n" + errors);
+            throw new InvalidOperationException("The thread variable \n" + errors);
     }
 
     static readonly Dictionary<string, IUntypedVariable> sessionVariables = new Dictionary<string, IUntypedVariable>();
@@ -80,7 +87,7 @@ public interface IUntypedVariable
 {
     string Name { get; }
     object? UntypedValue { get; set; }
-    bool IsClean {get;}
+    bool IsClean { get; }
     void Clean();
 }
 
@@ -128,7 +135,7 @@ public abstract class Variable<T> : IUntypedVariable
     public abstract void Clean();
 }
 
-public interface IThreadVariable: IUntypedVariable
+public interface IThreadVariable : IUntypedVariable
 {
     bool AvoidExportImport { get; }
 }
@@ -152,7 +159,7 @@ public class AsyncThreadVariable<T> : Variable<T>, IThreadVariable
     }
 }
 
-public abstract class SessionVariable<T>: Variable<T>
+public abstract class SessionVariable<T> : Variable<T>
 {
     public abstract Func<T>? ValueFactory { get; set; }
 
@@ -201,7 +208,7 @@ public class VoidSessionFactory : ISessionFactory
         }
 
         public override void Clean()
-        {   
+        {
         }
     }
 }
@@ -243,7 +250,7 @@ public class SingletonSessionFactory : ISessionFactory
 
         public override void Clean()
         {
-            singletonSession.Remove(Name); 
+            singletonSession.Remove(Name);
         }
     }
 }
@@ -272,7 +279,7 @@ public class ScopeSessionFactory : ISessionFactory
     public static IDisposable OverrideSession(Dictionary<string, object?> sessionDictionary)
     {
         if (!(Statics.SessionFactory is ScopeSessionFactory))
-            throw new InvalidOperationException("Impossible to OverrideSession because Statics.SessionFactory is not a ScopeSessionFactory"); 
+            throw new InvalidOperationException("Impossible to OverrideSession because Statics.SessionFactory is not a ScopeSessionFactory");
         var old = overridenSession.Value;
         overridenSession.Value = sessionDictionary;
         return new Disposable(() => overridenSession.Value = old);
@@ -292,7 +299,7 @@ public class ScopeSessionFactory : ISessionFactory
         {
             this.variable = variable;
         }
-        
+
         public override Func<T>? ValueFactory
         {
             get { return variable.ValueFactory; }

@@ -1,6 +1,8 @@
+using Microsoft.Data.SqlClient;
 using Microsoft.SqlServer.Types;
 using Signum.Engine.Maps;
 using System.Diagnostics;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Signum.Test.LinqProvider;
 
@@ -109,9 +111,9 @@ public class SqlFunctionsTest
         Dump((NoteWithDateEntity n) => n.CreationTime.MonthStart());
         Dump((NoteWithDateEntity n) => n.CreationTime.WeekStart());
         Dump((NoteWithDateEntity n) => n.CreationTime.Date);
-        Dump((NoteWithDateEntity n) => n.CreationTime.HourStart());
-        Dump((NoteWithDateEntity n) => n.CreationTime.MinuteStart());
-        Dump((NoteWithDateEntity n) => n.CreationTime.SecondStart());
+        Dump((NoteWithDateEntity n) => n.CreationTime.TruncHours());
+        Dump((NoteWithDateEntity n) => n.CreationTime.TruncMinutes());
+        Dump((NoteWithDateEntity n) => n.CreationTime.TruncSeconds());
 
         Dump((NoteWithDateEntity n) => n.CreationDate.YearStart());
         Dump((NoteWithDateEntity n) => n.CreationDate.QuarterStart());
@@ -292,25 +294,45 @@ public class SqlFunctionsTest
     [Fact]
     public void SqlHierarchyIdFunction()
     {
-        if (!Schema.Current.Settings.UdtSqlName.ContainsKey(typeof(SqlHierarchyId)))
-            return;
+        //if (!Schema.Current.Settings.UdtSqlName.ContainsKey(typeof(SqlHierarchyId)))
+        //    return;
+
+
+        var nodeNullable = Database.Query<LabelEntity>().Select(a => (SqlHierarchyId?)a.Node).ToList();
+        Debug.WriteLine(nodeNullable.ToString("\n"));
 
         var nodes = Database.Query<LabelEntity>().Select(a => a.Node);
 
-        Assert.Equal(
-            nodes.ToList().Select(a => a.ToString()).ToString(", "),
-            nodes.Select(a => a.ToString().InSql()).ToList().ToString(", ")
-            );
+        if (Connector.Current is SqlServerConnector)
+            Assert.Equal(
+                nodes.ToList().Select(a => a.ToString()).ToString(", "),
+                nodes.Select(a => a.ToString().InSql()).ToList().ToString(", ")
+                );
 
+        
         Debug.WriteLine(nodes.Select(n => n.GetAncestor(0).InSql()).ToString(", "));
         Debug.WriteLine(nodes.Select(n => n.GetAncestor(1).InSql()).ToString(", "));
+        Debug.WriteLine(nodes.Select(n => n.GetAncestor((int)n.GetLevel()).InSql()).ToString(", "));
+        Debug.WriteLine(nodes.Select(n => n.GetAncestor((int)n.GetLevel() + 1).InSql()).ToString(", "));
+
         Debug.WriteLine(nodes.Select(n => (int)(short)n.GetLevel().InSql()).ToString(", "));
         Debug.WriteLine(nodes.Select(n => n.ToString().InSql()).ToString(", "));
+        Debug.WriteLine(nodes.Select(n => n.ToString()).ToString(", "));
 
 
-        Debug.WriteLine(nodes.Where(n => (bool)(n.GetDescendant(SqlHierarchyId.Null, SqlHierarchyId.Null) > SqlHierarchyId.GetRoot())).ToString(", "));
-        Debug.WriteLine(nodes.Where(n => (bool)(n.GetReparentedValue(n.GetAncestor(0), SqlHierarchyId.GetRoot()) > SqlHierarchyId.GetRoot())).ToString(", "));
 
+        var one = SqlHierarchyId.Parse("/1/");
+        var two = SqlHierarchyId.Parse("/2/");
+
+
+        Debug.WriteLine(nodes.Where(n => (bool)n.IsDescendantOf(one)).ToString(", "));
+        Debug.WriteLine(nodes.Where(n => (bool)n.IsDescendantOf(one)).Select(a => a.GetReparentedValue(one, two).InSql()).ToString(", "));
+
+        var query = nodes.Where(n => (bool)(n.GetDescendant(SqlHierarchyId.Null, SqlHierarchyId.Null) > SqlHierarchyId.GetRoot()));
+        if (Connector.Current is SqlServerConnector)
+            Debug.WriteLine(query.ToString(", "));
+        else
+            Assert.Throws<InvalidOperationException>(() => query.ToString(", "));
 
     }
 
@@ -469,5 +491,54 @@ public class SqlFunctionsTest
         Small,
         Medium,
         Large
+    }
+
+    [Fact]
+    public void EvaluateBeforeAfter()
+    {
+
+        var note = Database.Query<NoteWithDateEntity>().Select(a => a.ToLite()).FirstEx();
+        T Test<T>(string value, Expression<Func<string, T>> function)
+        {
+            using (var tr = new Transaction())
+            {
+                note.InDB().UnsafeUpdate(a => a.Title, a => value);
+
+                return note.InDB(n => function.Evaluate(n.Title).InSql());
+
+                //tr.Commit()
+            }
+        }
+
+
+        Assert.Equal("A", Test("A=>B=>C", a => a.TryBefore("=>")));
+        Assert.Equal("B=>C", Test("A=>B=>C", a => a.TryAfter("=>")));
+        Assert.Equal("A=>B", Test("A=>B=>C", a => a.TryBeforeLast("=>")));
+        Assert.Equal("C", Test("A=>B=>C", a => a.TryAfterLast("=>")));
+
+
+        Assert.Equal("A", Test("A_B_C", a => a.TryBefore("_")));
+        Assert.Equal("B_C", Test("A_B_C", a => a.TryAfter("_")));
+        Assert.Equal("A_B", Test("A_B_C", a => a.TryBeforeLast("_")));
+        Assert.Equal("C", Test("A_B_C", a => a.TryAfterLast("_")));
+
+        Assert.Null(Test("ABC", a => a.TryBefore("_")));
+        Assert.Null(Test("ABC", a => a.TryAfter("_")));
+        Assert.Null(Test("ABC", a => a.TryBeforeLast("_")));
+        Assert.Null(Test("ABC", a => a.TryAfterLast("_")));
+
+        //In the database, Before behaves like TryBefore, etc..
+
+        Assert.Equal("A", Test("A_B_C", a => a.Before("_")));
+        Assert.Equal("B_C", Test("A_B_C", a => a.After("_")));
+        Assert.Equal("A_B", Test("A_B_C", a => a.BeforeLast("_")));
+        Assert.Equal("C", Test("A_B_C", a => a.AfterLast("_")));
+
+        Assert.Null(Test("ABC", a => a.Before("_")));
+        Assert.Null(Test("ABC", a => a.After("_")));
+        Assert.Null(Test("ABC", a => a.BeforeLast("_")));
+        Assert.Null(Test("ABC", a => a.AfterLast("_")));
+
+
     }
 }

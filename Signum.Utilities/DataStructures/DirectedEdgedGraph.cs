@@ -353,7 +353,7 @@ public class DirectedEdgedGraph<T, E> : IEnumerable<T>
     {
         return adjacency.ToString(kvp => "{0}=>{1};".FormatWith(kvp.Key,
              kvp.Value.ToString(kvp2 => "[{0}->{1}]".FormatWith(kvp2.Value, kvp2.Key), ",")),
-            "\r\n");
+            "\n");
     }
 
     public string ToGraphviz()
@@ -371,11 +371,11 @@ public class DirectedEdgedGraph<T, E> : IEnumerable<T>
         int num = 0;
         Dictionary<T, int> nodeDic = Nodes.ToDictionary(n => n, n => num++, Comparer);
 
-        string nodes = Nodes.ToString(e => "   {0} [ label =\"{1}\"];".FormatWith(nodeDic[e], getNodeLabel(e)), "\r\n");
+        string nodes = Nodes.ToString(e => "   {0} [ label =\"{1}\"];".FormatWith(nodeDic[e], getNodeLabel(e)), "\n");
 
-        string edges = EdgesWithValue.ToString(e => "   {0} -> {1} [ label =\"{2}\"];".FormatWith(nodeDic[e.From], nodeDic[e.To], getEdgeLabel(e.Value)), "\r\n");
+        string edges = EdgesWithValue.ToString(e => "   {0} -> {1} [ label =\"{2}\"];".FormatWith(nodeDic[e.From], nodeDic[e.To], getEdgeLabel(e.Value)), "\n");
 
-        return "digraph \"{0}\"\r\n{{\r\n{1}\r\n{2}\r\n}}".FormatWith(name, nodes, edges);
+        return "digraph \"{0}\"\n{{\n{1}\n{2}\n}}".FormatWith(name, nodes, edges);
     }
 
     public XDocument ToDGML()
@@ -580,7 +580,12 @@ public class DirectedEdgedGraph<T, E> : IEnumerable<T>
                 break;
         }
 
-        return to.For(n => previous.ContainsKey(n), n => previous[n]).Reverse().ToList();
+        var result = new List<T>();
+        for (var n = to; previous.ContainsKey(n); n = previous[n])
+        {
+            result.Add(n);
+        }
+        return result;
     }
 }
 

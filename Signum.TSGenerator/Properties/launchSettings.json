@@ -1,19 +1,29 @@
 {
   "profiles": {
-    "Framework": {
+    "Signum": {
       "commandName": "Project",
-      "commandLineArgs": "\"obj\\x64\\Debug\\netcoreapp6.0\\Signum.React.dll\" \"D:\\Signum\\Southwind\\Framework\\Signum.React\\obj\\SignumReferences.txt\" \"D:\\Signum\\Southwind\\Framework\\Signum.React\\obj\\SignumContent.txt\"",
-      "workingDirectory": "D:\\Signum\\Southwind\\Framework\\Signum.React\\"
+      "commandLineArgs": "\"obj\\Debug\\net8.0\\Signum.dll\" \"obj\\SignumReferences.txt\"",
+      "workingDirectory": "..\\Signum\\"
     },
-    "Extensions": {
+    "Authorization": {
       "commandName": "Project",
-      "commandLineArgs": "\"obj\\x64\\Debug\\netcoreapp6.0\\Signum.React.Extensions.dll\" \"D:\\Signum\\Southwind\\Framework\\Signum.React.Extensions\\obj\\SignumReferences.txt\" \"D:\\Signum\\Southwind\\Framework\\Signum.React.Extensions\\obj\\SignumContent.txt\"",
-      "workingDirectory": "D:\\Signum\\Southwind\\Framework\\Signum.React.Extensions\\"
+      "commandLineArgs": "\"obj\\Debug\\net8.0\\Signum.Authorization.dll\" \"obj\\SignumReferences.txt\"",
+      "workingDirectory": "..\\Extensions\\Signum.Authorization\\"
+    },
+    "Files": {
+      "commandName": "Project",
+      "commandLineArgs": "\"obj\\Debug\\net8.0\\Signum.Files.dll\" \"obj\\SignumReferences.txt\"",
+      "workingDirectory": "..\\Extensions\\Signum.Files\\"
+    },
+    "MailingPackage": {
+      "commandName": "Project",
+      "commandLineArgs": "\"obj\\Debug\\net8.0\\Signum.MailingPackage.dll\" \"obj\\SignumReferences.txt\"",
+      "workingDirectory": "..\\Extensions\\Signum.MailingPackage\\"
     },
     "Southwind": {
       "commandName": "Project",
-      "commandLineArgs": "\"obj\\x64\\Debug\\netcoreapp6.0\\Southwind.React.dll\" \"D:\\Signum\\Southwind\\Southwind.React\\obj\\SignumReferences.txt\" \"D:\\Signum\\Southwind\\Southwind.React\\obj\\SignumContent.txt\"",
-      "workingDirectory": "D:\\Signum\\Southwind\\Southwind.React\\"
+      "commandLineArgs": "\"obj\\x64\\Debug\\net8.0\\Southwind.React.dll\" \"obj\\SignumReferences.txt\" \"D:\\Signum\\Southwind\\Southwind.React\\obj\\SignumContent.txt\"",
+      "workingDirectory": "..\\Southwind.React\\"
     }
   }
 }

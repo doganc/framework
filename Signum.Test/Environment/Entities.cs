@@ -1,6 +1,5 @@
 using Signum.Engine.Maps;
 using Microsoft.SqlServer.Types;
-using Microsoft.Data.SqlClient.Server;
 using Microsoft.SqlServer.Server;
 
 namespace Signum.Test.Environment;
@@ -10,8 +9,11 @@ namespace Signum.Test.Environment;
 public class NoteWithDateEntity : Entity
 {
     [ForceNullable]
+    [StringLengthValidator(Max = 100)]
+    public string Title { get; set; }
+
     [StringLengthValidator(Min = 3, MultiLine = true)]
-    public string Text { get; set; }
+    public string? Text { get; set; }
 
     [ForceNullable]
     [ImplementedByAll]
@@ -27,7 +29,7 @@ public class NoteWithDateEntity : Entity
 
     public override string ToString()
     {
-        return "{0} -> {1}".FormatWith(CreationTime, Text);
+        return "{0} -> {1}".FormatWith(CreationTime, Title);
     }
 }
 
@@ -389,7 +391,7 @@ public static class MinimumExtensions
         if (Schema.Current.Settings.IsPostgres)
         {
             assets.IncludeUserDefinedFunction("MinimumTableValued", @"(p1 integer, p2 integer)
-RETURNS TABLE(""MinValue"" integer)
+RETURNS TABLE(min_value integer)
 AS $$
 BEGIN
 RETURN QUERY 
@@ -443,23 +445,4 @@ public class FolderEntity : Entity
 
     [AutoExpressionField]
     public override string ToString() => As.Expression(() => Name);
-}
-
-[EntityKind(EntityKind.Main, EntityData.Transactional)]
-public class AlbumReEditionEntity : Entity
-{
-    public Lite<AlbumEntity> Album { get; set; }
-
-    public DateTime Date { get; set; }
-
-
-    [AutoExpressionField]
-    public override string ToString() => As.Expression(() => $"{Album} {Date}");
-}
-
-[AutoInit]
-public static class AlbumReEditionOperation
-{
-    public static readonly ExecuteSymbol<AlbumReEditionEntity> Save;
-    public static readonly DeleteSymbol<AlbumReEditionEntity> Delete;
 }

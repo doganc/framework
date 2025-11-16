@@ -94,10 +94,32 @@ public class FormatAttribute : Attribute
 {
     public const string Password = "Password";
 
+    public const string Color = "Color";
+
     public string Format { get; private set; }
     public FormatAttribute(string format)
     {
         this.Format = format;
+    }
+
+    public static string FormatNumber(decimal number, string format, CultureInfo? culture = null)
+    {
+        culture ??= CultureInfo.CurrentCulture;
+
+        if (format.StartsWith("K"))
+        {
+            var baseFormat = format.Substring(4); //
+            if (number >= 1_000_000)
+                return (number / 1_000_000m).ToString(baseFormat, culture) + "M";
+            if (number >= 1_000)
+                return (number / 1_000m).ToString(baseFormat, culture) + "K";
+            return number.ToString(baseFormat, culture);
+        }
+        else
+        {
+            // fallback to normal formatting
+            return number.ToString(format, culture);
+        }
     }
 }
 
@@ -162,7 +184,7 @@ public static class DescriptionManager
 
         if (!LocalizedAssembly.HasDefaultAssemblyCulture(type.Assembly))
         {
-            return type.GetCustomAttribute<DescriptionAttribute>()?.Description ?? type.Name.NiceName();
+            return type.GetCustomAttribute<DescriptionAttribute>()?.Description ?? type.Name.SpacePascalOrUnderscores();
         }
 
         var result = Fallback(type, lt => lt.Description, lt => OnNotLocalizedMember(type));
@@ -198,7 +220,7 @@ public static class DescriptionManager
         if (fi != null)
             return GetMemberNiceName(fi) ?? DefaultMemberDescription(fi);
 
-        return a.ToString().NiceName();
+        return a.ToString().SpacePascalOrUnderscores();
     }
 
     public static string NiceName<R>(Expression<Func<R>> expressionToProperty)
@@ -239,7 +261,7 @@ public static class DescriptionManager
             if (f != null)
                 return f(memberInfo);
 
-            return memberInfo.GetCustomAttribute<DescriptionAttribute>()?.Description ?? memberInfo.Name.NiceName();
+            return memberInfo.GetCustomAttribute<DescriptionAttribute>()?.Description ?? memberInfo.Name.SpacePascalOrUnderscores();
         }
 
         var result = Fallback(type, lt => lt.Members!.TryGetC(memberInfo.Name), lt => OnNotLocalizedMember(memberInfo));
@@ -350,7 +372,7 @@ public static class DescriptionManager
 
     internal static string DefaultMemberDescription(MemberInfo m)
     {
-        return m.GetCustomAttribute<DescriptionAttribute>()?.Description ?? m.Name.NiceName();
+        return m.GetCustomAttribute<DescriptionAttribute>()?.Description ?? m.Name.SpacePascalOrUnderscores();
     }
 }
 
@@ -411,20 +433,30 @@ public class LocalizedAssembly
 
         string fileName = TranslationFileName(Assembly, Culture);
 
-        doc.Save(fileName);
+        if (doc == null)
+            File.Delete(fileName);
+        else
+            doc.Save(fileName);
 
         DescriptionManager.Invalidate();
     }
 
-    public XDocument ToXml()
+    public XDocument? ToXml()
     {
+        var types = (from lt in Types.Values
+                     let doa = GetDescriptionOptions(lt.Type)
+                     where doa != DescriptionOptions.None
+                     orderby lt.Type.Name
+                     select lt.ExportXml() into xt
+                     where !LocalizedType.IsEmpty(xt)
+                     select xt).ToList();
+
+        if (types.IsEmpty())
+            return null;
+
         var doc = new XDocument(new XDeclaration("1.0", "UTF8", "yes"),
             new XElement("Translations",
-                from lt in Types.Values
-                let doa = GetDescriptionOptions(lt.Type)
-                where doa != DescriptionOptions.None
-                orderby lt.Type.Name
-                select lt.ExportXml()
+                types
             )
         );
         return doc;
@@ -497,7 +529,7 @@ public class LocalizedType
 
     public XElement ExportXml()
     {
-        return new XElement("Type",
+        var result = new XElement("Type",
                 new XAttribute("Name", Type.Name),
 
                 !Options.IsSetAssert(DescriptionOptions.Description, Type) ||
@@ -523,6 +555,8 @@ public class LocalizedType
                   where value != null && !(Assembly.IsDefault && (DescriptionManager.DefaultMemberDescription(m) == value))
                   select new XElement("Member", new XAttribute("Name", m.Name), new XAttribute("Description", value)))
             );
+
+        return result;
     }
 
     const BindingFlags instanceFlags = BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly;
@@ -608,6 +642,11 @@ public class LocalizedType
             return false;
 
         return true;
+    }
+
+    public static bool IsEmpty(XElement xt)
+    {
+        return !xt.Attributes().Any(a => a.Name != "Name") && !xt.Elements().Any();
     }
 }
 

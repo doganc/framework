@@ -81,6 +81,7 @@ public static class EnumerableUniqueExtensions
     /// <typeparam name="T">Type of the collection</typeparam>
     /// <param name="collection">The collection to search</param>
     /// <returns>The single Element from the collection</returns>
+    [AvoidEagerEvaluation]
     public static T SingleEx<T>(this IEnumerable<T> collection)
     {
         if (collection == null)
@@ -184,6 +185,7 @@ public static class EnumerableUniqueExtensions
         return query.Where(predicate).SingleOrDefaultEx();
     }
 
+    [AvoidEagerEvaluation]
     public static T? SingleOrDefaultEx<T>(this IEnumerable<T> collection)
     {
         if (collection == null)
@@ -246,6 +248,7 @@ public static class EnumerableUniqueExtensions
         return query.Where(predicate).FirstEx();
     }
 
+    [AvoidEagerEvaluation]
     public static T FirstEx<T>(this IEnumerable<T> collection)
     {
         if (collection == null)
@@ -310,10 +313,13 @@ public static class EnumerableExtensions
     [MethodExpander(typeof(IsEmptyExpander))]
     public static bool IsEmpty<T>(this IEnumerable<T> collection)
     {
-        foreach (var item in collection)
-            return false;
+        return !collection.Any();
+    }
 
-        return true;
+    [MethodExpander(typeof(IsEmptyExpander))]
+    public static bool IsEmpty<T>(this IQueryable<T> collection)
+    {
+        return !collection.Any();
     }
 
     class IsEmptyExpander : IMethodExpander
@@ -329,12 +335,12 @@ public static class EnumerableExtensions
     
     public static bool IsNullOrEmpty<T>([NotNullWhen(false)]this IEnumerable<T>? collection)
     {
-        return collection == null || collection.IsEmpty();
+        return collection == null || collection is string s && s.Length == 0 || collection.IsEmpty();
     }
 
     public static bool IsNullOrEmpty<T>([NotNullWhen(false)] this ICollection<T>? collection)
     {
-        return collection == null || collection.Count == 0;
+        return collection == null || collection is string s && s.Length == 0 || collection.Count == 0;
     }
 
     public static bool HasItems<T>([NotNullWhen(true)]this IEnumerable<T>? collection)
@@ -634,7 +640,7 @@ public static class EnumerableExtensions
 
         int[] lengths = 0.To(width).Select(i => Math.Max(3, start.To(height).Max(j => table[i, j].Length))).ToArray();
 
-        return 0.To(height).Select(j => 0.To(width).ToString(i => table[i, j].PadTruncateRight(lengths[i]), separator)).ToString("\r\n");
+        return 0.To(height).Select(j => 0.To(width).ToString(i => table[i, j].PadTruncateRight(lengths[i]), separator)).ToString("\n");
     }
 
     public static void WriteFormattedStringTable<T>(this IEnumerable<T> collection, TextWriter textWriter, string? title, bool longHeaders)
@@ -1039,10 +1045,9 @@ public static class EnumerableExtensions
         }
     }
 
-    public static ObservableCollection<T>? ToObservableCollection<T>(this IEnumerable<T>? collection)
+    public static ObservableCollection<T> ToObservableCollection<T>(this IEnumerable<T> collection)
     {
-        return collection == null ? null :
-          collection as ObservableCollection<T> ?? new ObservableCollection<T>(collection);
+        return collection as ObservableCollection<T> ?? new ObservableCollection<T>(collection);
     }
 
     public static IEnumerable<T> AsThreadSafe<T>(this IEnumerable<T> source)
@@ -1147,7 +1152,7 @@ public static class EnumerableExtensions
         {
             try
             {
-                throw new InvalidOperationException($@"Mismatches {action}:
+               throw new InvalidOperationException($@"Mismatches {action}:
 {differences}
 Consider Synchronize.");
             }

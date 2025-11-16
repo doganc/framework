@@ -1,9 +1,10 @@
 using Signum.Engine.Maps;
 using System.IO;
-using Signum.Entities.Basics;
-using Signum.Engine.Basics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.SqlServer.Types;
+using Signum.Basics;
+using Npgsql;
+using Npgsql.Internal;
 
 namespace Signum.Test.Environment;
 
@@ -21,37 +22,44 @@ public static class MusicStarter
                 return;
 
             var conf = new ConfigurationBuilder().SetBasePath(Directory.GetCurrentDirectory())
-                //.AddJsonFile("appsettings.json")
+                .AddJsonFile("appsettings.json")
                 .AddUserSecrets(typeof(MusicStarter).Assembly, optional: true)
                 .Build();
 
-            var connectionString = conf.GetConnectionString("SignumTest") ?? "Data Source=.\\SQLEXPRESS;Initial Catalog=SignumTest;Integrated Security=true;TrustServerCertificate=true";
+            var connectionString = conf.GetConnectionString("SignumTest") ?? throw new InvalidOperationException("No connection string");
 
             Start(connectionString);
 
-            Administrator.TotalGeneration();
+            Administrator.TotalGeneration(interactive: false);
 
             Schema.Current.Initialize();
 
-            MusicLoader.Load();
+            (Connector.Current as PostgreSqlConnector)?.ReloadTypes();
 
+            MusicLoader.Load();
+       
             startedAndLoaded = true;
         }
     }
 
     public static void Start(string connectionString)
     {
-        SchemaBuilder sb = new SchemaBuilder(true);
+        SchemaBuilder sb = new SchemaBuilder();
 
         if (connectionString.Contains("Data Source"))
         {
-            var sqlVersion = SqlServerVersionDetector.Detect(connectionString);
-            Connector.Default = new SqlServerConnector(connectionString, sb.Schema, sqlVersion ?? SqlServerVersion.SqlServer2017);
+            var sqlVersion = SqlServerVersionDetector.Detect(connectionString, SqlServerVersion.SqlServer2017);
+            Connector.Default = new SqlServerConnector(connectionString, sb.Schema, sqlVersion);
         }
         else
         {
-            var postgreeVersion = PostgresVersionDetector.Detect(connectionString);
-            Connector.Default = new PostgreSqlConnector(connectionString, sb.Schema, postgreeVersion);
+            var postgreeVersion = PostgresVersionDetector.Detect(connectionString, null);
+            Connector.Default = new PostgreSqlConnector(connectionString, sb.Schema, postgreeVersion, builder =>
+            {
+                builder.EnableArrays();
+                builder.EnableLTree();
+                builder.EnableRanges();
+            });
         }
 
         sb.Schema.Version = typeof(MusicStarter).Assembly.GetName().Version!;
@@ -72,10 +80,10 @@ public static class MusicStarter
         {
             sb.Settings.UdtSqlName.Add(typeof(SqlHierarchyId), "HierarchyId");
         }
-        else
-        {
-            sb.Settings.FieldAttributes((LabelEntity a) => a.Node).Add(new Signum.Entities.IgnoreAttribute());
-        }
+        //else
+        //{
+        //    sb.Settings.FieldAttributes((LabelEntity a) => a.Node).Add(new Signum.Entities.IgnoreAttribute());
+        //}
 
         Validator.PropertyValidator((OperationLogEntity e) => e.User).Validators.Clear();
 
@@ -84,6 +92,7 @@ public static class MusicStarter
         OperationLogic.Start(sb);
         ExceptionLogic.Start(sb);
 
+        QueryLogic.Start(sb);
         MusicLogic.Start(sb);
 
         sb.Schema.OnSchemaCompleted();

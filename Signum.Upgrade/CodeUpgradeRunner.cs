@@ -62,6 +62,12 @@ public class CodeUpgradeRunner: IEnumerable<CodeUpgradeBase>
         }
 
         var list = File.ReadAllLines(upgradeFile);
+
+        if (list.Any(a => a.Contains("Southwind_")) && SafeConsole.Ask("Fix incorrect file " + upgradeFile + "?"))
+        {
+            list = list.Select(a => a.Replace("Southwind_", "")).ToArray();
+            File.WriteAllLines(upgradeFile, list);
+        }
       
         foreach (var v in this.Upgrades)
         {
@@ -120,7 +126,7 @@ public class CodeUpgradeRunner: IEnumerable<CodeUpgradeBase>
         catch (Exception ex)
         {
             SafeConsole.WriteLineColor(ConsoleColor.Red, ex.Message);
-            SafeConsole.WriteLineColor(ConsoleColor.DarkGray, ex.Message);
+            SafeConsole.WriteLineColor(ConsoleColor.DarkGray, ex.StackTrace);
 
             if (!SafeConsole.Ask("Do you want to skip {0} and mark it as executed?".FormatWith(upgrade.Key)))
                 return false;

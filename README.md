@@ -54,6 +54,32 @@ Signum Framework doesn't use any numeric versioning, since is distributed as sou
 
 Whenever there are big changes worth to mention, we typicaly write it in the related commit. Here is the list of the relevant changes: 
 
+* [2025.10.01 TypeScript Compilation Performance and Signum.TSCBuild](https://github.com/signumsoftware/framework/commit/5d740e37effc19469b097f9ce763f5560e4a1d7a#commitcomment-167686513)
+* [2025.09.22 Toolbar Improvements 🛠️](https://github.com/signumsoftware/framework/commit/d9a168aae9d9a59f6416652c270a444b9d160c1e#commitcomment-167596454)
+* [2025.09.01 Dark Mode, ThemeSelector and shadow panels 🌙☀️](https://github.com/signumsoftware/framework/commit/91eda3e81d898d7c8412b4d54022128cbba7efab#commitcomment-167592981)
+* [2025.08.22 Webpack -> Vite, React 19, React Router 7.7 and react-widgets-up](https://github.com/signumsoftware/framework/commit/f9aacfc47447c435e3708e86b92538238ca5c9b0#commitcomment-164464873)
+* 2025.07.21 Improvements in charting (translations, scales) ChartColumnType
+* 2025.07.16 Nicer Dashboards
+* 2025.06.23 AutoExpand in QueryTokens
+* 2025.05.25 Adopt LF (\n) as new-line separator for all file types (.ts, .tsx, .cs, etc...) using `.gitattributes`
+* 2025.04.01 Switch `Signum.HtmlEditor` from draft.js (deprecated) to lexical (great work @fwo-bechtle!)
+* 2025.03.03 MList tables have _ separating main table name from MList by default (dbo.Order_Details) 
+* 2024.11.16 DotNet 9
+* [2024.10.28 CSV Performance Improvements?](https://github.com/signumsoftware/framework/commit/e17aeb8df452dfd8289586ccb0135019ad92de38#commitcomment-150176560)
+* [2024.08.19 Time Machine in Charting! ⏲📈](https://github.com/signumsoftware/framework/commit/4a7cc1097f8e862b47d2dfd61216082b1c171be0)
+* [2024.07.02 Isolated Declarations](https://github.com/signumsoftware/framework/commit/bf08a77c430dd133b8eca50d502a14b91224267a)
+* [2024.03.27 Navigator, Finder, Operations, and *Client modules get a `namespace`](https://github.com/signumsoftware/framework/commit/2cf26f9cfe05f8707930bccf3c7427cc1522b99b#commitcomment-140281789)
+* [2024.02.17 `EntityLine<T>` with TS 5.4 beta](https://github.com/signumsoftware/framework/commit/4fcdba33a4d53c32477a8b44fd3088722dc49664#commitcomment-138753911)
+* [2023.10.31 From ValueLine to AutoLine](https://github.com/signumsoftware/framework/commit/44ca21e578187949932b6861f2a3be66b78ff290#commitcomment-131412697)
+* [2023.09.02 Presenting QueryAuditors (aka TypeConditionLogic.RegisterWhenAlreadyFilteringBy)](https://github.com/signumsoftware/framework/commit/b93dea738b259640790a470b25357eedad022dd4#comments)
+* [2023.08.30 QuickLinks in SearchControl Columns](https://github.com/signumsoftware/framework/commit/25f239479afa9027d24b7cc12f75722550411f06#comments)
+* [2023.05.09 Modular Revolution 🔥🔥🔥](https://github.com/signumsoftware/framework/commit/25f239479afa9027d24b7cc12f75722550411f06#comments)
+* [2023.04.18 Full-Text-Search 🔎](https://github.com/signumsoftware/framework/commit/fbba1e4e124a610bdf7b90afd81f681cb00566a0#commitcomment-111853358)
+* [2023.04.14 Simple Pinned Filters, Split Values and EntityStrip in SearchControl](https://github.com/signumsoftware/framework/commit/e9705497df53fbfd6965bd7e0ba448c2726a2e96#commitcomment-111858344)
+* [2023.03.24 Accessibility 🧑‍🦯](https://github.com/signumsoftware/framework/commit/7fc7c5efa2c39cdd881d6d6dd0bc57caa7da9f08#commitcomment-111843293)
+* [2023.02.18 Time Machine 2.0 🕰️](https://github.com/signumsoftware/framework/commit/68914f6239a9a849a2a07d7e647aeda2d8c9dbf1#commitcomment-101162063)
+* [2023.02.07 Presenting Custom Drilldowns](https://github.com/signumsoftware/framework/commit/75c713fbd8023824344f8a270afc1c24dc5496b7#comments)
+* [2023.01.31 Upgrade to react-router 6.7.0](https://github.com/signumsoftware/framework/commit/76755e743fd32bd787cef5e20a76ccb2155107b4#comments)
 * [2022.12.16 Responsive SearchControl](https://github.com/signumsoftware/framework/commit/41fc3c0c4732e2ce5750648d65b7030bce08c5e2#comments)
 * [2022.12.14 Client-side Diff](https://github.com/signumsoftware/framework/commit/880c1a7860573310e2cd300c45fe7bb92f1954de#comments)
 * [2022.12.06 ChatGPT 🤖 can program with Signum Framework!](https://github.com/signumsoftware/framework/commit/901e069a5b0ef0fd8b80d0e1632fd66671cb8b8f#commitcomment-92227611)
