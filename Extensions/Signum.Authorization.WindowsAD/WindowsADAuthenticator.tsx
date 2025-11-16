@@ -6,7 +6,7 @@ import MessageModal from '@framework/Modals/MessageModal';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { AuthClient } from '../Signum.Authorization/AuthClient';
 import LoginPage from '../Signum.Authorization/Login/LoginPage';
-import { LoginAuthMessage } from '../Signum.Authorization/Signum.Authorization';
+import { WindowsADMessage } from './Signum.Authorization.WindowsAD';
 
 export namespace WindowsAuthenticationClient {
   
@@ -49,7 +49,7 @@ export namespace WindowsAuthenticationClient {
       return API.loginWindowsAuthentication(true)
         .then(lr => {
           if (lr == null) {
-            MessageModal.showError(LoginAuthMessage.LooksLikeYourWindowsUserIsNotAllowedToUseThisApplication.niceToString(), LoginAuthMessage.NoWindowsUserFound.niceToString());
+            MessageModal.showError(WindowsADMessage.LooksLikeYourWindowsUserIsNotAllowedToUseThisApplication.niceToString(), WindowsADMessage.NoWindowsUserFound.niceToString());
           } else {
             AuthClient.setAuthToken(lr.token, lr.authenticationType);
             AuthClient.setCurrentUser(lr.userEntity);
@@ -62,7 +62,7 @@ export namespace WindowsAuthenticationClient {
       <div className="row mt-2">
         <div className="col-md-6 offset-md-3">
           <button type="button" onClick={e => { onClick(); }} className="btn btn-info">
-            <FontAwesomeIcon aria-hidden={true} icon={["fab", "windows"]} /> {LoginAuthMessage.LoginWithWindowsUser.niceToString()}
+            <FontAwesomeIcon aria-hidden={true} icon={["fab", "windows"]} /> {WindowsADMessage.LoginWithWindowsUser.niceToString()}
           </button>
         </div>
       </div>
